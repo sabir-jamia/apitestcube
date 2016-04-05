@@ -1,0 +1,15 @@
+database:
+    master:
+        username: "root"
+        password: "tolexo"
+        host:     "localhost"
+        port:     "3306"
+        db:       "testcubedb"
+        timezone: ""
+    clientmaster:
+            username: "root"
+            password: "tolexo"
+            host:     "localhost"
+            port:     "3306"
+            db:       "testcubedb"
+            timezone: ""
