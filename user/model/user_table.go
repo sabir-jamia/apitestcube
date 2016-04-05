@@ -6,7 +6,6 @@ import (
 	"strings"
 	"os/exec"
 	"os"
-	"path/filepath"
 	"strconv"
 )
 
@@ -21,7 +20,7 @@ func (u *UserTable) ListUser() []User{
 	return users;
 }
 
-func (u *UserTable) SaveUser (user User, clientUser ClientUser, userProfile UserProfile) {
+func (u *UserTable) SaveUser (user *User, clientUser *ClientUser, userProfile *UserProfile) error{
 	db := orm.Get(true)
 	trans := db.Begin()
 	user.Registration_date = time.Now()
@@ -32,22 +31,29 @@ func (u *UserTable) SaveUser (user User, clientUser ClientUser, userProfile User
 			user.Client_id = user.Id;
 			trans.Save(&user)
 			userProfile.User_id = user.Id
+			userProfile.Language = "en"
 			trans.NewRecord(&userProfile)
 			err := trans.Create(&userProfile).Error
+			curDirectory, _ := os.Getwd()
+			curDirectory = "/var/www/ZendTestcube/module/User/src/User/Model/"
 			if err == nil {
-				stmt := "CREATE SCHEMA IF NOT EXISTS clientdb0" + strconv.Itoa(user.Client_id) + " DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;";
-				stmt += "use clientdb0" + strconv.Itoa(user.Client_id) + ";";
-				stmt += "CREATE USER 'client0" + strconv.Itoa(user.Client_id) + "'@'localhost' IDENTIFIED BY 'client0" + strconv.Itoa(user.Client_id) + "';";
-				stmt += "GRANT SELECT, INSERT, UPDATE, DELETE ON clientdb0" + strconv.Itoa(user.Client_id) + ".* TO 'client0" + strconv.Itoa(user.Client_id) + "'@'localhost';";
-				trans.Exec(stmt)
-				//$dbUser = $this->_dbConfig['username'];
-				//$dbPass = $this->_dbConfig['password'];
-				sqlConn := "mysql -u$dbUser -p$dbPass -hlocalhost clientdb0" + strconv.Itoa(user.Client_id) + " < " + filepath.Abs(filepath.Dir(os.Args[0])) + "/clientdb.sql";
-				exec.Command(sqlConn)
+				clientDb := "clientdb0" + strconv.Itoa(user.Client_id)
+				clientDbUser := "client0" + strconv.Itoa(user.Client_id)
+				clientDbPass := "tolexo"
+				trans.Exec("CREATE SCHEMA IF NOT EXISTS "+ clientDb +" DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;");
+				trans.Exec("USE "+ clientDb +";");
+				trans.Exec("CREATE USER '"+ clientDbUser + "'@'localhost' IDENTIFIED BY '"+ clientDbPass +"';");
+				trans.Exec("GRANT SELECT, INSERT, UPDATE, DELETE ON "+ clientDb +".* TO '"+ clientDbUser +"'@'localhost';");
+				dbUser := "root"
+				dbPass := "tolexo"
+				sqlConn := "mysql -u"+ dbUser +" -p"+ dbPass +" -hlocalhost "+ clientDb + " < " + curDirectory + "clientdb2.sql";
+				exec.Command("sh", "-c", sqlConn).Run()
 
 				clientUser.First_name = strings.Title(strings.ToLower(clientUser.First_name))
 				clientUser.Created_on = time.Now()
 				clientUser.Updated_on = time.Now()
+				clientUser.Testcube_id = user.Client_id
+				clientUser.Language = "en"
 				if clientUser.Last_name != "" {
 					clientUser.Last_name = strings.Title(strings.ToLower(clientUser.Last_name))
 				}
@@ -55,12 +61,19 @@ func (u *UserTable) SaveUser (user User, clientUser ClientUser, userProfile User
 				trans.Create(&clientUser)
 				trans.Exec("USE testcubedb;");
 				trans.Commit()
+			} else {
+				trans.Rollback()
+				return err
 			}
+		} else {
 			trans.Rollback()
+			return err
 		}
+	} else {
 		trans.Rollback()
+		return nil
 	}
-	trans.Rollback()
+	return nil
 }
 
 

@@ -41,8 +41,13 @@ func (u *UserService) Create(j aqua.Jar) Response {
 	utils.GetPostData(j.Body, &data)
 	utils.GetPostData(j.Body, &clientData)
 	utils.GetPostData(j.Body, &userProfileData)
-	UserTable.SaveUser(data, clientData, userProfileData)
-	return Response{Status:"error", Code:405, Messaage:"The POST method has not been defined", Data:""}
+	err := UserTable.SaveUser(&data, &clientData, &userProfileData)
+	if err == nil {
+		response := map[string]interface{}{ "clientId" : data.Client_id}
+		return Response{Status:"success", Code:200, Messaage:"", Data:response}
+	} else {
+		return Response{Status:"error", Code:405, Messaage:"Some error occured", Data:""}
+	}
 }
 
 /**

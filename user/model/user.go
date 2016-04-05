@@ -9,7 +9,7 @@ type User struct  {
 	Password          string    `json:"password"`
 	Registration_date time.Time `json:"registration_date"`
 	Client_id         int       `json:"client_id"`
-	Status            int       `json:"status"`
+	Status            []byte       `json:"status"`
 }
 
 type ClientUser struct {
@@ -20,7 +20,7 @@ type ClientUser struct {
 	Email       string    `json:"email"`
 	Created_on  time.Time `json:"created_on"`
 	Updated_on  time.Time `json:"updated_on"`
-	Status      int       `json:"status"`
+	Status      []byte       `json:"status"`
 	Language    string    `json:"language"`
 }
 

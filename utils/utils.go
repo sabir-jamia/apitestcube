@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	//"fmt"
 )
 
 func GetPostData(data string, userInput interface{}) {
