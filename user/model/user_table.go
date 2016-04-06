@@ -24,7 +24,6 @@ func (u *UserTable) SaveUser (user *User, clientUser *ClientUser, userProfile *U
 	db := orm.Get(true)
 	trans := db.Begin()
 	user.Registration_date = time.Now()
-	//'password' => md5($register->password),
 	if trans.NewRecord(user) {
 		err := trans.Create(&user).Error
 		if err == nil {
@@ -76,6 +75,21 @@ func (u *UserTable) SaveUser (user *User, clientUser *ClientUser, userProfile *U
 	return nil
 }
 
+func (u *UserTable) GetUserById(id int) (*User, error){
+	db := orm.Get(true)
+	user := User{}
+	err := db.Where(&User{Id : id, Status: true}).Find(&user).Error
+	return &user, err
+}
+
+func (u *UserTable) UpdateStatus(id int, user *User) error{
+	db := orm.Get(true)
+	sql := "UPDATE users SET status = ? WHERE id = ?";
+	err := db.Exec(sql, user.Status, user.Id).Error
+	return err
+}
+
+
 
 /*class UserTable
 {
@@ -103,34 +117,6 @@ public function setDbCredentails($dbConfig)
 $this->_dbConfig = $dbConfig;
 }
 
-public function updatestatus($id)
-{
-$data = array(
-'status' => '1'
-);
-if ($this->getUserById($id)) {
-$this->tableGateway->update($data, array(
-'id' => $id
-));
-return 1;
-} else {
-return 0;
-}
-}
-
-public function getUserById($id)
-{
-$rowset = $this->tableGateway->select(array(
-'id' => $id,
-'status' => '0'
-));
-$row = $rowset->current();
-
-if (! $row) {
-/* throw new \Exception("Could not found row $username");
-}
-return $row;
-}
 
 public function getUserByUserName($username, $usernameType)
 {
