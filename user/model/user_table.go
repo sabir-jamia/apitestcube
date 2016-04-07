@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"os"
 	"strconv"
+	"math/rand"
+	"errors"
 )
 
 type UserTable struct {
@@ -82,11 +84,92 @@ func (u *UserTable) GetUserById(id int) (*User, error){
 	return &user, err
 }
 
+func (u *UserTable) GetUserByUserName(username string) (*User, error) {
+	db := orm.Get(true)
+	user := User{}
+	err := db.Where(&User{Status:true, Username:username}).Find(&user).Error
+	return &user, err
+}
+
 func (u *UserTable) UpdateStatus(id int, user *User) error{
 	db := orm.Get(true)
 	sql := "UPDATE users SET status = ? WHERE id = ?";
 	err := db.Exec(sql, user.Status, user.Id).Error
 	return err
+}
+
+func (u *UserTable) GetNewPasswordByEmail(email string) (bool, error){
+	db := orm.Get(true)
+	characters := "abcdefghijklmnopqrstuvwxyz0123456789";
+	length := len(characters);
+	var str []byte;
+	rand.Seed(time.Now().Unix())
+	for i := 0; i < 10; i++  {
+		str = append(str, characters[rand.Intn(length - 1)]);
+	}
+	user := User{}
+	err := db.Where("email = ?", email).First(&user).Error
+	if err == nil {
+		if user.Id == 0 {
+			return false, errors.New("User does not exists")
+		}
+		err = db.Table("users").Where("email = ?", email).Update("password", string(str)).Error
+		if err == nil {
+			return true, nil
+		}
+	}
+	return false, err
+}
+
+func (u *UserTable) IsEmailExist(email string)  error{
+	db := orm.Get(true)
+	user := User{}
+	err := db.Where("email = ?", email).First(&user).Error
+	if err == nil {
+		if user.Id == 0 {
+			return errors.New("User does not exist with given email")
+		}
+		return  nil;
+	}
+	return  err;
+}
+
+func (u *UserTable) CheckUserExists(username string) (err error){
+	if strings.ContainsAny(username, "@") {
+		err = u.IsEmailExist(username)
+	} else {
+		_, err = u.GetUserByUserName(username)
+	}
+	return err
+}
+
+func (u *UserTable) UserProfile(userId int) (map[string]interface{}, error) {
+	var clientId, contact int
+	var email, username, firstName, lastName, photo string
+	var registrationDate time.Time
+	db := orm.Get(true)
+	sql := "SELECT u.client_id, u.email, u.username, u.registration_date, "+
+	      "up.first_name, up.last_name, up.photo, up.contact " +
+	      "FROM users u LEFT JOIN user_profile up "+
+	      "ON u.client_id = up.user_id "+
+	      "WHERE u.id = ?"
+	row := db.Raw(sql, userId).Row()
+	row.Scan(&clientId, &email, &username, &registrationDate, &firstName, &lastName, &photo, &contact)
+	if clientId != 0 {
+		return map[string]interface{}{
+			"clientId" : clientId, "username" :username,
+			"contact" : contact, "firstName" : firstName,
+			"lastName" : lastName, "photo" : photo,
+			"registrationDate" :registrationDate, "email" : email,
+		}, nil
+	}
+	return map[string]interface{}{}, errors.New("User does not exist")
+}
+
+func (u *UserTable) ClientGeneralProfileUpdate(userProfile UserProfile) {
+	db := orm.Get(true)
+	update := db.Table("user_profile").Where("testcube_id = ?", userProfile.User_id)
+	update.Updates(UserProfile{First_name:userProfile.First_name, Last_name:userProfile.Last_name})
 }
 
 
@@ -110,160 +193,6 @@ $this->tableGateway = $tableGateway;
 $this->_adapter = $this->tableGateway->getAdapter();
 $this->_connection = $this->_adapter->getDriver()->getConnection();
 $this->resultSetPrototype = new ResultSet();
-}
-
-public function setDbCredentails($dbConfig)
-{
-$this->_dbConfig = $dbConfig;
-}
-
-
-public function getUserByUserName($username, $usernameType)
-{
-$rowset = $this->tableGateway->select(array(
-$usernameType => $username,
-'status' => '1'
-));
-$row = $rowset->current();
-
-if (! $row) {
-return 'notconfirmed';
-// throw new \Exception("Could not found row $username");
-}
-return $row;
-}
-
-public function getPasswordByEmail($email)
-{
-$characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-$length = strlen($characters);
-$string = '';
-for ($i = 0; $i < $length - 30; $i ++) {
-$string .= $characters[rand(0, $length - 1)];
-}
-
-$sql = new Sql($this->tableGateway->getAdapter());
-
-$update = $sql->update();
-$update->table('users');
-$update->set(array(
-'password' => md5($string)
-));
-$update->where(array(
-'email' => $email
-));
-
-// echo $update->getSqlString();
-
-$statement = $sql->prepareStatementForSqlObject($update);
-try {
-$result = $statement->execute(); // works fine
-} catch (\Exception $e) {
-die('Error: ' . $e->getMessage());
-}
-// die();
-return $string;
-}
-
-public function isEmailexist($txtVal)
-{
-$rowset = $this->tableGateway->select(array(
-'email' => $txtVal
-));
-$row = $rowset->current();
-
-if ($row) {
-return true;
-} else {
-return false;
-}
-}
-
-public function checkUserExists($user)
-{
-$pos = strpos($user, '@');
-if ($pos === false) {
-$rowset = $this->tableGateway->select(array(
-'username' => $user
-));
-$row = $rowset->current();
-} else {
-$rowset = $this->tableGateway->select(array(
-'email' => $user
-));
-$row = $rowset->current();
-}
-
-if ($row) {
-return true;
-} else {
-return false;
-}
-}
-
-public function userProfile($userid)
-{
-$user_id = (int) $userid;
-
-$where = new Where();
-$where->equalTo('usersTabl.id', $user_id);
-
-$sql = new Sql($this->tableGateway->getAdapter());
-$select = $sql->select()
-->from(array(
-'usersTabl' => 'users'
-))
-->columns(array(
-'clientId' => 'client_id',
-'email' => 'email',
-'username' => 'username',
-'regDate' => 'registration_date'
-))
-->join(array(
-'userProfileTabl' => 'user_profile'
-), 'usersTabl.client_id = userProfileTabl.user_id', array(
-'firstName' => 'first_name',
-'lastName' => 'last_name',
-'photo' => 'photo',
-'contact' => 'contact'
-))
-->where($where);
-
-// echo $select->getSqlString();
-$statement = $sql->prepareStatementForSqlObject($select);
-$result = $this->resultSetPrototype->initialize($statement->execute())
-->toArray();
-// \Zend\Debug\Debug::dump($result);
-return $result;
-}
-
-public function clientGeneralProfileUpdate($profileData)
-{
-$data = array(
-'profileFirstName' => $profileData['profileFirstName'],
-'profileLastName' => $profileData['profileLastName']
-);
-
-$sql = new Sql($this->tableGateway->getAdapter());
-
-$update = $sql->update();
-$update->table('users');
-$update->set(array(
-'first_name' => $profileData['profileFirstName'],
-'last_name' => $profileData['profileLastName']
-));
-$update->where(array(
-'testcube_id' => $profileData['clientId']
-));
-// echo $update->getSqlString();
-$statement = $sql->prepareStatementForSqlObject($update);
-try {
-$result = $statement->execute(); // works fine
-} catch (\Exception $e) {
-die('Error: ' . $e->getMessage());
-}
-
-return $result;
 }
 
 public function superGeneralProfileUpdate($profileData)
