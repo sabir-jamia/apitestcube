@@ -22,7 +22,7 @@ type Response struct {
 	Status   string       `json:"status"`
 	Code     int          `json:"code"`
 	Data     interface{}  `json:"data"`
-	Messaage string       `json:"message"`
+	Message string       `json:"message"`
 }
 
 var UserTable = model.UserTable{}
@@ -43,10 +43,10 @@ func (u *UserService) Create(j aqua.Jar) Response {
 	utils.GetPostData(j.Body, &userProfileData)
 	err := UserTable.SaveUser(&data, &clientData, &userProfileData)
 	if err == nil {
-		response := map[string]interface{}{ "clientId" : data.Client_id}
-		return Response{Status:"success", Code:200, Messaage:"", Data:response}
+		response := map[string]interface{}{ "clientId" : data.ClientId}
+		return Response{Status:"success", Code:200, Message:"", Data:response}
 	} else {
-		return Response{Status:"error", Code:405, Messaage:"Some error occured", Data:""}
+		return Response{Status:"error", Code:405, Message:"Some error occured", Data:""}
 	}
 }
 
@@ -57,7 +57,7 @@ func (u *UserService) Create(j aqua.Jar) Response {
  * @return Response anonymous
 */
 func (u *UserService) Delete(id int) Response {
-	return Response{Status:"error", Code:405, Messaage:"The DELETE method has not been defined for individual resources", Data:""}
+	return Response{Status:"error", Code:405, Message:"The DELETE method has not been defined for individual resources", Data:""}
 }
 
 /**
@@ -70,7 +70,7 @@ func(u *UserService) DeleteList(j aqua.Jar) Response {
 	j.LoadVars()
 	data := model.User{}
 	utils.GetPostData(j.Body, &data)
-	return Response{Status:"error", Code:405, Messaage:"The DELETE method has not been defined for collections", Data:""}
+	return Response{Status:"error", Code:405, Message:"The DELETE method has not been defined for collections", Data:""}
 }
 
 /**
@@ -82,9 +82,9 @@ func(u *UserService) DeleteList(j aqua.Jar) Response {
 func (u *UserService) Fetch(id int) Response {
 	user, err := UserTable.GetUserById(id)
 	if err == nil {
-		return Response{Status:"success", Code:200, Messaage:"", Data:user}
+		return Response{Status:"success", Code:200, Message:"", Data:user}
 	}
-	return Response{Status:"error", Code:405, Messaage:err.Error(), Data:""}
+	return Response{Status:"error", Code:405, Message:err.Error(), Data:""}
 	//return Response{Status:"error", Code:405, Messaage:"The GET method has not been defined for individual resources", Data:""}
 }
 
@@ -119,9 +119,9 @@ func (UserService) Patch(id int, j aqua.Jar) Response{
 	utils.GetPostData(j.Body, &data)
 	err := UserTable.UpdateStatus(id, &data)
 	if err ==nil {
-		return Response{Status:"status", Code:200, Messaage:"", Data:"status updated successfully"}
+		return Response{Status:"status", Code:200, Message:"", Data:"status updated successfully"}
 	}
-	return Response{Status:"error", Code:405, Messaage:"status not updated successfully", Data:""}
+	return Response{Status:"error", Code:405, Message:"status not updated successfully", Data:""}
 	//return Response{Status:"error", Code:405, Messaage:"The PATCH method has not been defined for individual resources", Data:""}
 }
 
@@ -136,7 +136,7 @@ func (u *UserService) Update (id int, j aqua.Jar) Response {
 	j.LoadVars()
 	data := model.User{}
 	utils.GetPostData(j.Body, &data)
-	return Response{Status:"error", Code:405, Messaage:"The PUT method has not been defined for individual resources", Data:""}
+	return Response{Status:"error", Code:405, Message:"The PUT method has not been defined for individual resources", Data:""}
 }
 
 /**
@@ -148,5 +148,5 @@ func (u *UserService) Update (id int, j aqua.Jar) Response {
 func (u *UserService)ReplaceList(j aqua.Jar) Response {
 	data := model.User{}
 	utils.GetPostData(j.Body, &data)
-	return Response{Status:"error", Code:405, Messaage:"The PUT method has not been defined for collections", Data:""}
+	return Response{Status:"error", Code:405, Message:"The PUT method has not been defined for collections", Data:""}
 }

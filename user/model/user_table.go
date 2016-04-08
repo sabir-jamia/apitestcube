@@ -25,21 +25,21 @@ func (u *UserTable) ListUser() []User{
 func (u *UserTable) SaveUser (user *User, clientUser *ClientUser, userProfile *UserProfile) error{
 	db := orm.Get(true)
 	trans := db.Begin()
-	user.Registration_date = time.Now()
+	user.RegistrationDate = time.Now()
 	if trans.NewRecord(user) {
 		err := trans.Create(&user).Error
 		if err == nil {
-			user.Client_id = user.Id;
+			user.ClientId = user.Id;
 			trans.Save(&user)
-			userProfile.User_id = user.Id
+			userProfile.UserId = user.Id
 			userProfile.Language = "en"
 			trans.NewRecord(&userProfile)
 			err := trans.Create(&userProfile).Error
 			curDirectory, _ := os.Getwd()
 			curDirectory = "/var/www/ZendTestcube/module/User/src/User/Model/"
 			if err == nil {
-				clientDb := "clientdb0" + strconv.Itoa(user.Client_id)
-				clientDbUser := "client0" + strconv.Itoa(user.Client_id)
+				clientDb := "clientdb0" + strconv.Itoa(user.ClientId)
+				clientDbUser := "client0" + strconv.Itoa(user.ClientId)
 				clientDbPass := "tolexo"
 				trans.Exec("CREATE SCHEMA IF NOT EXISTS "+ clientDb +" DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;");
 				trans.Exec("USE "+ clientDb +";");
@@ -50,13 +50,13 @@ func (u *UserTable) SaveUser (user *User, clientUser *ClientUser, userProfile *U
 				sqlConn := "mysql -u"+ dbUser +" -p"+ dbPass +" -hlocalhost "+ clientDb + " < " + curDirectory + "clientdb2.sql";
 				exec.Command("sh", "-c", sqlConn).Run()
 
-				clientUser.First_name = strings.Title(strings.ToLower(clientUser.First_name))
-				clientUser.Created_on = time.Now()
-				clientUser.Updated_on = time.Now()
-				clientUser.Testcube_id = user.Client_id
+				clientUser.FirstName = strings.Title(strings.ToLower(clientUser.FirstName))
+				clientUser.CreatedOn = time.Now()
+				clientUser.UpdatedOn = time.Now()
+				clientUser.TestcubeId = user.ClientId
 				clientUser.Language = "en"
-				if clientUser.Last_name != "" {
-					clientUser.Last_name = strings.Title(strings.ToLower(clientUser.Last_name))
+				if clientUser.LastName != "" {
+					clientUser.LastName = strings.Title(strings.ToLower(clientUser.LastName))
 				}
 				trans.NewRecord(&clientUser)
 				trans.Create(&clientUser)
@@ -93,8 +93,7 @@ func (u *UserTable) GetUserByUserName(username string) (*User, error) {
 
 func (u *UserTable) UpdateStatus(id int, user *User) error{
 	db := orm.Get(true)
-	sql := "UPDATE users SET status = ? WHERE id = ?";
-	err := db.Exec(sql, user.Status, user.Id).Error
+	err := db.Model(User{}).Where("id = ?", user.Id).Update("status", user.Status).Error
 	return err
 }
 
@@ -113,7 +112,8 @@ func (u *UserTable) GetNewPasswordByEmail(email string) (bool, error){
 		if user.Id == 0 {
 			return false, errors.New("User does not exists")
 		}
-		err = db.Table("users").Where("email = ?", email).Update("password", string(str)).Error
+		user.Password = string(str)
+		err := db.Save(&user).Error
 		if err == nil {
 			return true, nil
 		}
@@ -166,189 +166,36 @@ func (u *UserTable) UserProfile(userId int) (map[string]interface{}, error) {
 	return map[string]interface{}{}, errors.New("User does not exist")
 }
 
-func (u *UserTable) ClientGeneralProfileUpdate(userProfile UserProfile) {
+func (u *UserTable) ClientGeneralProfileUpdate(userProfile *UserProfile) error {
 	db := orm.Get(true)
-	update := db.Table("user_profile").Where("testcube_id = ?", userProfile.User_id)
-	update.Updates(UserProfile{First_name:userProfile.First_name, Last_name:userProfile.Last_name})
+	err := db.Model(UserProfile{}).Where("user_id = ?", userProfile.UserId).
+	Updates(UserProfile{FirstName:userProfile.FirstName, LastName:userProfile.LastName}).Error
+	return err
 }
 
-
-
-/*class UserTable
-{
-
-protected $tableGateway;
-
-protected $resultSetPrototype;
-
-private $_dbConfig;
-
-private $_adapter;
-
-private $_connection;
-
-public function __construct(TableGateway $tableGateway)
-{
-$this->tableGateway = $tableGateway;
-$this->_adapter = $this->tableGateway->getAdapter();
-$this->_connection = $this->_adapter->getDriver()->getConnection();
-$this->resultSetPrototype = new ResultSet();
+func (u *UserTable) SuperGeneralProfileUpdate(userProfile *UserProfile) error {
+	db := orm.Get(true)
+	err := db.Model(UserProfile{}).Where("user_id", userProfile.UserId).
+	Updates(UserProfile{FirstName:userProfile.FirstName,
+		LastName:userProfile.LastName,
+		Contact:userProfile.Contact,
+		Photo:userProfile.Photo,
+	}).Error
+	return err;
 }
 
-public function superGeneralProfileUpdate($profileData)
-{
-$data = array(
-'profileFirstName' => $profileData['profileFirstName'],
-'profileLastName' => $profileData['profileLastName'],
-'profileContact' => $profileData['profileContact'],
-'profilePic' => $profileData['profilePic'],
-'random' => $profileData['random']
-);
-
-$sql = new Sql($this->tableGateway->getAdapter());
-
-$update = $sql->update();
-$update->table('user_profile');
-
-if ($data['random'] == $data['profilePic']) {
-$update->set(array(
-'first_name' => $profileData['profileFirstName'],
-'last_name' => $profileData['profileLastName'],
-'contact' => $profileData['profileContact']
-));
-} else {
-$update->set(array(
-'first_name' => $profileData['profileFirstName'],
-'last_name' => $profileData['profileLastName'],
-'contact' => $profileData['profileContact'],
-'photo' => $profileData['profilePic']
-));
+func (u *UserTable) UpdateProfilePassword(passwordData map [string]string) {
+	db := orm.Get(true)
+	db.Model(User{}).Where("client_id = ?", passwordData["clientId"]).
+	Updates(User{Password:passwordData["newPassword"]})
+	//pass word should be stored in md5
 }
 
-$update->where(array(
-'user_id' => $profileData['clientId']
-));
-// echo $update->getSqlString();
-
-$statement = $sql->prepareStatementForSqlObject($update);
-
-try {
-$result = $statement->execute(); // works fine
-} catch (\Exception $e) {
-die('Error: ' . $e->getMessage());
+func (u *UserTable) ClientGeneralProfileSettings(profile *UserProfile) {
+	db := orm.Get(true)
+	db.Model(UserProfile{}).Where("user_id = ?", profile.UserId).
+	Updates(UserProfile{
+		Language:profile.LastName,
+		Theme:profile.Theme,
+	})
 }
-
-return $result;
-}
-
-public function updateProfilePassword($passwordData)
-{
-$data = array(
-'clientId' => $passwordData['clientId'],
-'newPassword' => $passwordData['newPassword']
-);
-
-$sql = new Sql($this->tableGateway->getAdapter());
-
-$update = $sql->update();
-$update->table('users');
-$update->set(array(
-'password' => md5($passwordData['newPassword'])
-));
-$update->where(array(
-'client_id' => $passwordData['clientId']
-));
-// echo $update->getSqlString();
-
-$statement = $sql->prepareStatementForSqlObject($update);
-try {
-$result = $statement->execute(); // works fine
-} catch (\Exception $e) {
-die('Error: ' . $e->getMessage());
-}
-
-return $result;
-}
-
-public function clientGeneralProfileSettings($profileData)
-{
-$data = array(
-'clientId' => $profileData['clientId'],
-'selectedLanguage' => $profileData['selectedLanguage'],
-'themeColor' => $profileData['themeColor']
-);
-
-$sql = new Sql($this->tableGateway->getAdapter());
-
-$update = $sql->update();
-$update->table('user_profile');
-$update->set(array(
-'language' => $profileData['selectedLanguage']
-));
-$update->set(array(
-'theme' => $profileData['themeColor']
-));
-$update->where(array(
-'user_id' => $profileData['clientId']
-));
-// echo $update->getSqlString();
-
-$statement = $sql->prepareStatementForSqlObject($update);
-try {
-$result = $statement->execute(); // works fine
-$res = 1;
-} catch (\Exception $e) {
-die('Error: ' . $e->getMessage());
-$res = 0;
-}
-
-return $res;
-}
-
-/*
- * public function clientGeneralProfileSettings($profileData){
- * $data = array(
- * 'clientId' => $profileData['clientId'],
- * 'selectedLanguage' => $profileData['selectedLanguage'],
- * 'themeColor' => $profileData['themeColor']
- * );
- * $theme = $profileData['themeColor'];
- * $language = $profileData['selectedLanguage'];
- * $clientId = $profileData['clientId'];
- *
- *
- *
- * $adapter1 = $this->dbAdapter12;
- * $themeQuery = "UPDATE (update user_profile SET theme = $theme, language = '$language' where user_id = $clientId;) as themeselected";
- * $themeData = $adapter1->query($themeQuery, Adapter::QUERY_MODE_EXECUTE)->toArray();;
- * echo $themeData;
- * die();
- *
- *
- *
- * return $themeData;
- *
- *
- *
- *
- *
- * /*$sql = new Sql ( $this->tableGateway->getAdapter() );
- *
- * $update = $sql->update();
- * $update->table('user_profile');
- * $update->set(array('language' => $profileData['selectedLanguage']));
- * $update->set(array('theme' => $profileData['themeColor']));
- * $update->where(array('client_id' => $profileData['clientId']));
- * //echo $update->getSqlString();
- *
- * $statement = $sql->prepareStatementForSqlObject($update);
- * try {
- * $result = $statement->execute(); // works fine
- * } catch (\Exception $e) {
- * die('Error: ' . $e->getMessage());
- * }
- *
- * return $result;
- *
- * }
-}*/
