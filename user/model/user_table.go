@@ -87,7 +87,7 @@ func (u *UserTable) GetUserById(id int) (*User, error){
 func (u *UserTable) GetUserByUserName(username string) (*User, error) {
 	db := orm.Get(true)
 	user := User{}
-	err := db.Where(&User{Status:true, Username:username}).Find(&user).Error
+	err := db.Where(&User{Username:username}).Find(&user).Error
 	return &user, err
 }
 

@@ -99,8 +99,12 @@ func (u *UserService) FetchAll(j aqua.Jar) Response{
 	queryParams := j.QueryVars
 	userName := queryParams["username"]
 	if  userName != "" {
-		row, _ := UserTable.GetUserByUserName(userName)
-		return Response{Status:"success", Code:200, Data:row}
+		row, err := UserTable.GetUserByUserName(userName)
+		if err == nil {
+			return Response{Status:"success", Code:200, Data:row}
+		} else {
+			return Response{Status:"error", Code:405, Data:"", Message:err.Error()}
+		}
 	}
 	return Response{Status:"success", Code:200, Data:UserTable.ListUser()}
 	//return Response{Status:"error", Code:405, Messaage:"The GET method has not been defined for collections", Data:""}
