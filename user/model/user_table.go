@@ -78,16 +78,23 @@ func (u *UserTable) SaveUser (user *User, clientUser *ClientUser, userProfile *U
 }
 
 func (u *UserTable) GetUserById(id int) (*User, error){
-	db := orm.Get(true)
+	db := orm.Get(false)
 	user := User{}
 	err := db.Where(&User{Id : id, Status: true}).Find(&user).Error
 	return &user, err
 }
 
 func (u *UserTable) GetUserByUserName(username string) (*User, error) {
-	db := orm.Get(true)
+	db := orm.Get(false)
 	user := User{}
 	err := db.Where(&User{Username:username}).Find(&user).Error
+	return &user, err
+}
+
+func (u *UserTable) GetUserByEmail(email string) (*User, error) {
+	db := orm.Get(false)
+	user := User{}
+	err := db.Where(&User{Email:email}).Find(&user).Error
 	return &user, err
 }
 

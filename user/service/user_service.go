@@ -46,7 +46,7 @@ func (u *UserService) Create(j aqua.Jar) Response {
 		response := map[string]interface{}{ "clientId" : data.ClientId}
 		return Response{Status:"success", Code:200, Message:"", Data:response}
 	} else {
-		return Response{Status:"error", Code:405, Message:"Some error occured", Data:""}
+		return Response{Status:"error", Code:405, Message:err.Error(), Data:""}
 	}
 }
 
@@ -98,8 +98,18 @@ func (u *UserService) FetchAll(j aqua.Jar) Response{
 	j.LoadVars()
 	queryParams := j.QueryVars
 	userName := queryParams["username"]
+	email := queryParams["email"]
 	if  userName != "" {
 		row, err := UserTable.GetUserByUserName(userName)
+		if err == nil {
+			return Response{Status:"success", Code:200, Data:row}
+		} else {
+			return Response{Status:"error", Code:405, Data:"", Message:err.Error()}
+		}
+	}
+
+	if email != "" {
+		row, err := UserTable.GetUserByEmail(email)
 		if err == nil {
 			return Response{Status:"success", Code:200, Data:row}
 		} else {
